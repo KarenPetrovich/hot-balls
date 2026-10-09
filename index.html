@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>HOT BALLS</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #10141b;
+    --paper: #eee8dc;
+    --muted: #9b9a96;
+    --line: rgba(255, 255, 255, 0.1);
+    --surface: rgba(25, 29, 36, 0.82);
+    --accent: #c9a96e;
+    --accent-light: #ead7ad;
+    --danger: #d3695a;
+    --success: #84a88c;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    height: 100dvh;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    color: var(--paper);
+    background:
+      radial-gradient(circle at 50% -20%, rgba(110, 124, 146, 0.16), transparent 46%),
+      linear-gradient(145deg, #12161d 0%, #090b0f 100%);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.16;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+    mix-blend-mode: soft-light;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 0 28px 24px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 82px;
+    padding: 16px 4px 12px;
+  }
+  header h1 {
+    margin: 0;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .run-status {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .run-status span + span::before {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    margin: 0 18px 2px 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .play-area {
+    flex: 1;
+    min-height: 420px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 178px;
+    gap: 14px;
+  }
+  #view {
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    overflow: hidden;
+    touch-action: none;
+    position: relative;
+    background: #11161d;
+    box-shadow:
+      0 28px 80px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  #view canvas { display: block; width: 100%; height: 100%; }
+  #view.rotatable canvas { cursor: grab; }
+  #view.rotatable canvas:active { cursor: grabbing; }
+  #view.aim canvas { cursor: crosshair; }
+  .side-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-self: start;
+  }
+  .side-tool-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 13px;
+    border-radius: 14px;
+    color: #c9c5bc;
+    background: rgba(25, 29, 36, 0.78);
+    font-size: 0.67rem;
+    line-height: 1.35;
+    letter-spacing: 0.06em;
+    text-align: left;
+  }
+  .info-dialog {
+    width: min(620px, calc(100vw - 32px));
+    max-height: min(720px, calc(100vh - 32px));
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 22px;
+    color: var(--paper);
+    background: #171c24;
+    box-shadow: 0 32px 100px rgba(0, 0, 0, 0.65);
+  }
+  .info-dialog::backdrop { background: rgba(4, 6, 9, 0.72); backdrop-filter: blur(5px); }
+  .dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dialog-head h2 { margin: 0; font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .dialog-close { min-width: 0; padding: 8px 11px; border-radius: 10px; font-size: 0.7rem; }
+  .dialog-content { margin: 0; padding: 18px 24px 24px 42px; overflow: auto; max-height: calc(100vh - 130px); }
+  .dialog-content li { padding: 5px 0; color: #d1cdc4; line-height: 1.45; }
+  #view::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: var(--temperature-opacity, 0);
+    border: 2px solid var(--temperature-color, #65bdff);
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, transparent 48%, color-mix(in srgb, var(--temperature-color) 20%, transparent) 100%);
+    box-shadow: inset 0 0 72px color-mix(in srgb, var(--temperature-color) 38%, transparent);
+    transition: opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+  .temperature {
+    position: absolute;
+    z-index: 2;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    gap: 2px;
+    min-width: 138px;
+    padding: 6px 13px;
+    border: 1px solid color-mix(in srgb, var(--temperature-color, #65bdff) 65%, transparent);
+    border-radius: 999px;
+    color: var(--temperature-color, #65bdff);
+    background: rgba(10, 13, 18, 0.76);
+    text-align: center;
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 180ms ease, color 180ms ease, border-color 180ms ease;
+    backdrop-filter: blur(10px);
+  }
+  #view.temperature-active .temperature { opacity: 1; }
+  .temperature small { color: #aaa9a5; font-size: 0.48rem; letter-spacing: 0.11em; }
+  .temperature strong { font-size: 0.67rem; letter-spacing: 0.13em; }
+  .panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px 28px;
+    margin-top: 14px;
+    padding: 18px 20px;
+    min-height: 82px;
+    background: var(--surface);
+    color: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(18px);
+    font-size: 0.95rem;
+  }
+  .panel p { margin: 0; line-height: 1.55; }
+  #hint { color: #d5d1c8; font-weight: 400; max-width: 720px; }
+  .row { display: flex; gap: 10px; justify-content: flex-end; }
+  button {
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    min-width: 156px;
+    padding: 13px 22px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--paper);
+    box-shadow: none;
+    transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.3); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #17130d; }
+  button.primary:hover:not(:disabled) { background: var(--accent-light); }
+  button.hot { border-color: rgba(201, 169, 110, 0.48); color: var(--accent-light); }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #17130d; }
+  button:disabled { opacity: 0.35; cursor: default; transform: none; }
+  button[hidden] { display: none; }
+  .result {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.55rem;
+    font-weight: 600;
+  }
+  .result.bad { color: #e38a7d; }
+  .result.good { color: #a8c7ae; }
+  #proof {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+  #proof .hole-list { color: #d9b8b2; }
+  #proof .tank-mark { color: #b7c7b8; }
+  @media (max-width: 760px) {
+    .app { padding: 0 14px 14px; }
+    header { min-height: 64px; }
+    .run-status { gap: 8px; font-size: 0.62rem; }
+    .run-status span + span::before { margin-right: 8px; }
+    .run-status span:last-child { display: none; }
+    .play-area { min-height: 280px; grid-template-columns: 1fr; }
+    #view { min-height: 280px; border-radius: 20px; }
+    .side-tools { display: grid; grid-template-columns: 1fr 1fr; align-self: auto; }
+    .side-tool-btn { text-align: center; }
+    .panel { grid-template-columns: 1fr; padding: 15px; }
+    .row { justify-content: stretch; }
+    button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>HOT BALLS</h1>
+    <div class="run-status" id="runStatus" aria-live="polite"></div>
+  </header>
+  <div class="play-area">
+    <div id="view"><div id="temperature" class="temperature"><small>Близость к хорде</small><strong>Холодно</strong></div></div>
+    <aside class="side-tools" aria-label="Информация об игре">
+      <button type="button" class="side-tool-btn" id="btnChanges">Список изменений</button>
+      <button type="button" class="side-tool-btn" id="btnIdeas">Список предложений</button>
+    </aside>
+  </div>
+  <div class="panel">
+    <p id="hint">Загрузка…</p>
+    <div class="row">
+      <button type="button" id="btnFold" class="primary" disabled>Собрать шар</button>
+      <button type="button" id="btnPierce" class="hot" aria-pressed="false" hidden>Проколоть</button>
+      <button type="button" id="btnAgain" class="primary" hidden>Повторить</button>
+    </div>
+    <p id="proof" hidden></p>
+    <p id="out" class="result" hidden></p>
+  </div>
+</div>
+<dialog class="info-dialog" id="infoDialog">
+  <div class="dialog-head">
+    <h2 id="dialogTitle"></h2>
+    <button type="button" class="dialog-close" id="dialogClose" aria-label="Закрыть">Закрыть</button>
+  </div>
+  <ol class="dialog-content" id="dialogContent"></ol>
+</dialog>
+<script>
+  // Показываем фактическую причину вместо пустого экрана.
+  window.__sharFail = function (title, detail) {
+    var h = document.getElementById("hint");
+    var text = title || "Неизвестная ошибка запуска";
+    if (detail) text += ": " + detail;
+    if (h) h.textContent = "Ошибка: " + text;
+    console.error("ШАР — " + text);
+  };
+  window.addEventListener("error", function (e) {
+    // Не считаем ошибкой игры необязательный веб-шрифт: офлайн сработает fallback.
+    if (e.target && e.target.tagName && e.target.tagName !== "SCRIPT") return;
+    window.__sharFail("JavaScript", e.message || "скрипт не загрузился");
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    var reason = e.reason;
+    window.__sharFail("JavaScript", reason && reason.message ? reason.message : String(reason || "необработанная ошибка"));
+  });
+  setTimeout(function () {
+    if (window.__sharReady) return;
+    var h = document.getElementById("hint");
+    if (h && h.textContent.indexOf("Ошибка") !== 0) {
+      h.textContent = "Ошибка: игра не завершила запуск. Открой консоль браузера (F12) для подробностей.";
+    }
+  }, 8000);
+</script>
+<script src="./three.module.min.js" onerror="window.__sharFail('не загружен Three.js', this.src)"></script>
+<script src="./ball-data.js" onerror="window.__sharFail('не загружены данные шара', this.src)"></script>
+<script>
+(function () {
+"use strict";
+
+const FOLD_MS = 1800;
+const UNFOLD_MS = 1250;
+const NEEDLE_MS = 550;
+const MAX_ATTEMPTS = 3;
+
+function randomSeed() {
+  if (window.crypto?.getRandomValues) return window.crypto.getRandomValues(new Uint32Array(1))[0];
+  return (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
+}
+
+function makeRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+const view = document.getElementById("view");
+const temperature = document.getElementById("temperature");
+const temperatureValue = temperature.querySelector("strong");
+const hint = document.getElementById("hint");
+const out = document.getElementById("out");
+const proof = document.getElementById("proof");
+const btnFold = document.getElementById("btnFold");
+const btnPierce = document.getElementById("btnPierce");
+const btnAgain = document.getElementById("btnAgain");
+const runStatus = document.getElementById("runStatus");
+const btnChanges = document.getElementById("btnChanges");
+const btnIdeas = document.getElementById("btnIdeas");
+const infoDialog = document.getElementById("infoDialog");
+const dialogTitle = document.getElementById("dialogTitle");
+const dialogContent = document.getElementById("dialogContent");
+const dialogClose = document.getElementById("dialogClose");
+
+const CHANGELOG_ITEMS = [
+  "Исправлен автономный запуск игры из index.html без локального сервера.",
+  "Добавлена процедурная генерация новой конфигурации для каждой из трёх попыток.",
+  "Хорда автоматически проверяется как реальный сквозной прокол двух золотых целей.",
+  "Пять ловушек размещаются рядом с концами хорды, сохраняя точную траекторию чистой.",
+  "Одиночная цель получила узнаваемое окружение из повторяющихся символов.",
+  "Награды сокращены до 10 очков за одиночную цель и 25 за двойную хорду.",
+  "Добавлен индикатор близости к хорде от «Льдищще» до «Горячо».",
+  "Быстрое вращение имеет инерцию, медленная точная доводка останавливается сразу.",
+  "Повышены читаемость символов, контраст целей и качество визуальной обратной связи.",
+  "Интерфейс обновлён, добавлены диагностика запуска, счёт и локальный рекорд."
+];
+
+const IDEA_ITEMS = [
+  "Три импульса: температуру можно проверить только три раза за попытку.",
+  "Измерение после остановки: температура обновляется, только когда шар перестал двигаться.",
+  "Остывающий след: индикатор работает несколько секунд, затем фиксирует последнее значение.",
+  "Хрупкий шар: лишнее вращение постепенно активирует заранее отмеченные ловушки.",
+  "Ложная пара: на развёртке появляется отвлекающая золотая пара, не образующая хорду.",
+  "Полярность: дополнительная цель даёт бонус только при правильном направлении прокола.",
+  "Блуждающая ловушка: во время складывания одна ловушка переходит между известными клетками.",
+  "Слепая складка: после короткого изучения развёртка скрывается на время сборки.",
+  "Стабилизация иглы: точность зависит от правильно выбранного момента удержания кнопки.",
+  "Контракт риска: перед третьей попыткой можно принять усложнение ради множителя очков."
+];
+
+function openInfoDialog(title, items) {
+  dialogTitle.textContent = title;
+  dialogContent.replaceChildren(...items.map((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    return li;
+  }));
+  infoDialog.showModal();
+}
+
+btnChanges.addEventListener("click", () => openInfoDialog("Список изменений", CHANGELOG_ITEMS));
+btnIdeas.addEventListener("click", () => openInfoDialog("Список предложений", IDEA_ITEMS));
+dialogClose.addEventListener("click", () => infoDialog.close());
+infoDialog.addEventListener("click", (event) => {
+  if (event.target === infoDialog) infoDialog.close();
+});
+
+/** @type {"flat"|"folding"|"ball"|"needle"|"unfolding"|"result"} */
+let phase = "flat";
+let fold = 0;
+let aiming = false;
+let anim = null;
+let portrait = false;
+/** @type {{ face: number, sub: number, uv?: [number, number] }[]} */
+let piercedCells = [];
+let pairTargets = [];
+let soloTarget = null;
+let hazardCells = [];
+let attemptsLeft = MAX_ATTEMPTS;
+let score = 0;
+let runOver = false;
+let bestScore = readBestScore();
+
+function readBestScore() {
+  try { return Number(localStorage.getItem("shar-best-score") || 0); }
+  catch (_) { return 0; }
+}
+
+function storeBestScore(value) {
+  try { localStorage.setItem("shar-best-score", String(value)); }
+  catch (_) { /* В приватном режиме рекорд живёт только до перезагрузки. */ }
+}
+
+const SYMBOL_KINDS = 3;
+/** @type {number[][]} symbol id per sub-cell; on the ball every cell shows one, tank replaces it only on the net */
+let cellSymbols = [];
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (err) {
+  hint.textContent = "Браузер не дал WebGL — 3D-лист здесь не запустится.";
+  throw err;
+}
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x11161d);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
+
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+scene.add(new THREE.HemisphereLight(0xfff4df, 0x111820, 1.25));
+const sun = new THREE.DirectionalLight(0xffedcf, 2.15);
+sun.position.set(4, 10, 6);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8da9c7, 0.65);
+fill.position.set(-7, 4, -5);
+scene.add(fill);
+const neutralLightColor = new THREE.Color(0x8da9c7);
+const temperatureColdColor = new THREE.Color(0x55bfff);
+const temperatureWarmColor = new THREE.Color(0xe7b85c);
+const temperatureHotColor = new THREE.Color(0xff512f);
+const temperatureColor = new THREE.Color();
+let heatLevel = 0;
+
+const table = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({ color: 0x161c24, roughness: 1 })
+);
+table.rotation.x = -Math.PI / 2;
+table.position.y = -0.01;
+scene.add(table);
+
+const shadowCanvas = document.createElement("canvas");
+shadowCanvas.width = shadowCanvas.height = 128;
+const shadowContext = shadowCanvas.getContext("2d");
+const shadowGradient = shadowContext.createRadialGradient(64, 64, 2, 64, 64, 64);
+shadowGradient.addColorStop(0, "rgba(0,0,0,0.8)");
+shadowGradient.addColorStop(0.5, "rgba(0,0,0,0.38)");
+shadowGradient.addColorStop(1, "rgba(0,0,0,0)");
+shadowContext.fillStyle = shadowGradient;
+shadowContext.fillRect(0, 0, 128, 128);
+const shadow = new THREE.Mesh(
+  new THREE.CircleGeometry(ballRadius * 1.15, 64),
+  new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(shadowCanvas), transparent: true, opacity: 0, depthWrite: false
+  })
+);
+shadow.rotation.x = -Math.PI / 2;
+shadow.position.set(ballCenter[0], 0.002, ballCenter[2]);
+scene.add(shadow);
+
+// pivot вращает собранный мяч вокруг его центра; offset возвращает грани в мировые координаты.
+const pivot = new THREE.Group();
+pivot.position.set(...ballCenter);
+scene.add(pivot);
+const offset = new THREE.Group();
+offset.position.set(-ballCenter[0], -ballCenter[1], -ballCenter[2]);
+pivot.add(offset);
+
+/* ---------- материалы ---------- */
+
+const seamMat = new THREE.LineBasicMaterial({ color: 0x3b3935, transparent: true, opacity: 0.82 });
+const creaseMat = new THREE.LineBasicMaterial({ color: 0x514d46, transparent: true, opacity: 0.56 });
+const paperOpts = { roughness: 0.78, metalness: 0.02, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
+const mats = {
+  outer: new THREE.MeshStandardMaterial({ color: 0xe8e0d0, ...paperOpts }),
+  inner: new THREE.MeshStandardMaterial({ color: 0xddd4c3, ...paperOpts }),
+  innerPent: new THREE.MeshStandardMaterial({ color: 0xd8cfbd, ...paperOpts }),
+  innerHex: new THREE.MeshStandardMaterial({ color: 0xe0d7c7, ...paperOpts })
+};
+function isCustomFaceMat(m) {
+  return m && m !== mats.inner && m !== mats.innerPent && m !== mats.innerHex && m !== mats.outer;
+}
+
+function disposeCustomMaterial(m) {
+  if (!isCustomFaceMat(m)) return;
+  if (m.map) m.map.dispose();
+  m.dispose();
+}
+
+function drawSymbolIcon(g, kind) {
+  g.lineJoin = "round";
+  g.lineWidth = 6;
+  g.strokeStyle = "#2c2b29";
+  const r = 24;
+  if (kind === 0) {
+    g.fillStyle = "#527bb3";
+    g.beginPath();
+    g.arc(0, 0, r, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  } else if (kind === 1) {
+    g.fillStyle = "#6f9d80";
+    g.beginPath();
+    g.moveTo(0, -r);
+    g.lineTo(r, r * 0.85);
+    g.lineTo(-r, r * 0.85);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  } else {
+    g.fillStyle = "#9a78a8";
+    g.fillRect(-r, -r, r * 2, r * 2);
+    g.strokeRect(-r, -r, r * 2, r * 2);
+  }
+}
+
+function drawTargetMarker(g, paired) {
+  g.lineJoin = "round";
+  g.lineWidth = paired ? 7 : 6;
+  g.strokeStyle = paired ? "#e0b85f" : "#c79b4e";
+  g.fillStyle = paired ? "rgba(238, 196, 105, 0.25)" : "rgba(224, 188, 112, 0.15)";
+  g.beginPath();
+  g.arc(0, 0, paired ? 38 : 34, 0, Math.PI * 2);
+  g.fill();
+  g.stroke();
+  if (paired) {
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(0, 0, 29, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = "#e0b85f";
+    g.strokeStyle = "#2c2b29";
+    g.beginPath();
+    g.moveTo(28, -39);
+    g.lineTo(38, -29);
+    g.lineTo(28, -19);
+    g.lineTo(18, -29);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  }
+}
+
+function drawHazardMarker(g) {
+  g.save();
+  g.strokeStyle = "#d4594c";
+  g.fillStyle = "rgba(212, 89, 76, 0.24)";
+  g.lineWidth = 8;
+  g.beginPath();
+  g.arc(0, 0, 38, 0, Math.PI * 2);
+  g.fill();
+  g.stroke();
+  g.lineWidth = 9;
+  g.beginPath();
+  g.moveTo(-18, -18);
+  g.lineTo(18, 18);
+  g.moveTo(18, -18);
+  g.lineTo(-18, 18);
+  g.stroke();
+  g.restore();
+}
+
+function sameCell(a, face, sub) {
+  return a && a.face === face && a.sub === sub;
+}
+
+function drawFaceSubCellGrid(g, face) {
+  const { r } = faceFrame(face);
+  const toPx = (u, v) => [128 + (u / (2 * r)) * 256, 128 + (v / (2 * r)) * 256];
+  g.strokeStyle = "rgba(55, 52, 47, 0.38)";
+  g.lineWidth = 3;
+  g.lineCap = "round";
+  for (const [a, b] of subCellCreaseSegmentsTangent(face)) {
+    const [x0, y0] = toPx(a[0], a[1]);
+    const [x1, y1] = toPx(b[0], b[1]);
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x1, y1);
+    g.stroke();
+  }
+}
+
+/** @param {"inner"|"outer"} side — игровые маркеры видны только на развёртке. */
+function makeFaceMarkMaterial(faceId, side) {
+  const face = faces[faceId];
+  const bg = face.kind === "pent" ? "#d8cfbd" : "#e0d7c7";
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 256, 256);
+  drawFaceSubCellGrid(g, face);
+  const subs = subCellCount(face);
+  for (let sub = 0; sub < subs; sub++) {
+    const uv = subCellUvCenter(face, sub);
+    const tx = uv[0] * 256;
+    const ty = uv[1] * 256;
+    g.save();
+    g.translate(tx, ty);
+    const sym = cellSymbols[faceId]?.[sub];
+    if (sym != null) {
+      g.save();
+      g.scale(side === "inner" ? 0.9 : 1.05, side === "inner" ? 0.9 : 1.05);
+      drawSymbolIcon(g, sym);
+      g.restore();
+    }
+    if (side === "inner") {
+      const isPairTarget = pairTargets.some((cell) => sameCell(cell, faceId, sub));
+      if (isPairTarget) drawTargetMarker(g, true);
+      else if (sameCell(soloTarget, faceId, sub)) drawTargetMarker(g, false);
+      else if (hazardCells.some((cell) => sameCell(cell, faceId, sub))) drawHazardMarker(g);
+    }
+    g.restore();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.flipY = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshStandardMaterial({ map: tex, ...paperOpts });
+}
+
+function nearestSubCell(faceId, worldPoint) {
+  let bestSub = 0;
+  let bestDistance = Infinity;
+  for (let subId = 0; subId < subCellCount(faces[faceId]); subId++) {
+    const center = localCellCenter({ face: faceId, sub: subId });
+    const distance = len(sub(center, worldPoint));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestSub = subId;
+    }
+  }
+  return bestSub;
+}
+
+function soloSignatureCells() {
+  const signature = [];
+  // Вся грань цели повторяет один знак — простой «островок», который легко
+  // узнать после складывания, не раскрывая точную клетку автоматически.
+  for (let sub = 0; sub < subCellCount(faces[soloTarget.face]); sub++) {
+    signature.push({ face: soloTarget.face, sub });
+  }
+  const center = localCellCenter(soloTarget);
+  for (const neighbor of adjacency[soloTarget.face]) {
+    signature.push({ face: neighbor.to, sub: nearestSubCell(neighbor.to, center) });
+  }
+  return signature;
+}
+
+function generateCellSymbols(seed) {
+  const random = makeRandom(seed);
+  const signatureSymbol = Math.floor(random() * SYMBOL_KINDS);
+  const backgroundSymbols = Array.from({ length: SYMBOL_KINDS }, (_, id) => id)
+    .filter((id) => id !== signatureSymbol);
+  cellSymbols = faces.map((f) => {
+    const n = subCellCount(f);
+    const row = new Array(n);
+    for (let sub = 0; sub < n; sub++) {
+      row[sub] = backgroundSymbols[Math.floor(random() * backgroundSymbols.length)];
+    }
+    return row;
+  });
+  for (const cell of soloSignatureCells()) {
+    cellSymbols[cell.face][cell.sub] = signatureSymbol;
+  }
+}
+
+function applyAllFaceMaterials() {
+  for (let i = 0; i < faces.length; i++) {
+    const oldIn = innerMeshes[i].material;
+    const oldOut = outerMeshes[i].material;
+    innerMeshes[i].material = makeFaceMarkMaterial(i, "inner");
+    outerMeshes[i].material = makeFaceMarkMaterial(i, "outer");
+    disposeCustomMaterial(oldIn);
+    if (oldOut !== oldIn) disposeCustomMaterial(oldOut);
+  }
+}
+
+function loadChallenge(level) {
+  pairTargets = level.pair.map((cell) => ({ ...cell }));
+  soloTarget = { ...level.solo };
+  hazardCells = level.hazards.map((cell) => ({ ...cell }));
+  generateCellSymbols(level.symbolSeed);
+  applyAllFaceMaterials();
+  updatePairGuide();
+}
+
+/* ---------- грани ---------- */
+
+function faceGeometry(face, inward) {
+  const c = face.center;
+  const e1 = norm(sub(face.verts[0], c));
+  const e2 = cross(face.normal, e1);
+  const r = len(sub(face.verts[0], c));
+  const pts = [c, ...face.verts];
+  const pos = [];
+  const uv = [];
+  for (const p of pts) {
+    pos.push(p[0], p[1], p[2]);
+    const d = sub(p, c);
+    uv.push(0.5 + dot(d, e1) / (2 * r), 0.5 + dot(d, e2) / (2 * r));
+  }
+  const idx = [];
+  const n = face.verts.length;
+  for (let i = 0; i < n; i++) {
+    const a = 1 + i;
+    const b = 1 + ((i + 1) % n);
+    if (inward) idx.push(0, b, a);
+    else idx.push(0, a, b);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+const groups = [];
+const innerMeshes = [];
+const outerMeshes = [];
+const pickMeshes = [];
+
+for (const face of faces) {
+  const group = new THREE.Group();
+  group.matrixAutoUpdate = false;
+  const outer = new THREE.Mesh(faceGeometry(face, false), mats.outer);
+  const inner = new THREE.Mesh(faceGeometry(face, true), face.kind === "pent" ? mats.innerPent : mats.innerHex);
+  outer.userData.faceId = face.id;
+  inner.userData.faceId = face.id;
+  const seam = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(face.verts.map((v) => new THREE.Vector3(...v))),
+    seamMat
+  );
+  for (const [a, b] of subCellCreasesLocal(face)) {
+    const crease = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]),
+      creaseMat
+    );
+    group.add(crease);
+  }
+  group.add(outer, inner, seam);
+  offset.add(group);
+  groups.push(group);
+  innerMeshes.push(inner);
+  outerMeshes.push(outer);
+  pickMeshes.push(outer, inner);
+}
+
+// Тонкая подсказка на развёртке. После сборки она исчезает:
+// направление приходится искать по температуре света, а не по «рентгену».
+const pairGuideMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffcf55,
+  transparent: true,
+  opacity: 0.95,
+  depthTest: false,
+  depthWrite: false
+});
+const pairGuideGlowMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffb92e,
+  transparent: true,
+  opacity: 0.18,
+  depthTest: false,
+  depthWrite: false
+});
+const pairGuide = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 1, 8), pairGuideMaterial);
+const pairGuideGlow = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1, 8), pairGuideGlowMaterial);
+pairGuide.renderOrder = 30;
+pairGuideGlow.renderOrder = 29;
+scene.add(pairGuideGlow, pairGuide);
+const pairGuideCenter = new THREE.Vector3(...ballCenter);
+const pairGuideUp = new THREE.Vector3(0, 1, 0);
+const pairGuidePoints = [new THREE.Vector3(), new THREE.Vector3()];
+const pairGuideDirection = new THREE.Vector3();
+const pairGuideView = new THREE.Vector3();
+
+function localCellCenter(cell) {
+  const face = faces[cell.face];
+  const frame = faceFrame(face);
+  const [u, v] = subCellTangentCenter(face, cell.sub);
+  return add(frame.c, add(scale(frame.e1, u), scale(frame.e2, v)));
+}
+
+function cellKey(cell) {
+  return cell.face + ":" + cell.sub;
+}
+
+function inverseTransformPoint(transform, point) {
+  const d = sub(point, transform.t);
+  const R = transform.R;
+  return [
+    R[0] * d[0] + R[3] * d[1] + R[6] * d[2],
+    R[1] * d[0] + R[4] * d[1] + R[7] * d[2],
+    R[2] * d[0] + R[5] * d[1] + R[8] * d[2]
+  ];
+}
+
+function shuffled(items, random) {
+  const result = items.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function generateProceduralChallenge() {
+  const seed = randomSeed();
+  const random = makeRandom(seed);
+  const transforms = foldTransforms(1);
+  const worldVerts = faces.map((face) => face.verts.map((point) => applyT(transforms[face.id], point)));
+  const cells = faces.flatMap((face) =>
+    Array.from({ length: subCellCount(face) }, (_, subId) => ({ face: face.id, sub: subId }))
+  );
+  const worldCenters = new Map(cells.map((cell) => [cellKey(cell), applyT(transforms[cell.face], localCellCenter(cell))]));
+
+  function classifyHits(origin, direction) {
+    return pierceAlongRay(origin, direction, worldVerts).map((hit) => {
+      const local = inverseTransformPoint(transforms[hit.id], hit.point);
+      const [u, v] = tangentCoords(faces[hit.id], local);
+      return { face: hit.id, sub: subCellAtPoint(faces[hit.id], u, v) };
+    });
+  }
+
+  function chordHits(a, b) {
+    const pa = worldCenters.get(cellKey(a));
+    const pb = worldCenters.get(cellKey(b));
+    const direction = norm(sub(pb, pa));
+    const origin = sub(pa, scale(direction, ballRadius * 0.45));
+    return classifyHits(origin, direction);
+  }
+
+  const pairCandidates = [];
+  for (let i = 0; i < cells.length; i++) {
+    for (let j = i + 1; j < cells.length; j++) {
+      const a = cells[i];
+      const b = cells[j];
+      if (a.face === b.face) continue;
+      const pa = worldCenters.get(cellKey(a));
+      const pb = worldCenters.get(cellKey(b));
+      if (len(sub(pb, pa)) < ballRadius * 1.45) continue;
+      const hits = chordHits(a, b);
+      if (hits.length < 2) continue;
+      const first = hits[0];
+      const last = hits[hits.length - 1];
+      if (cellKey(first) === cellKey(a) && cellKey(last) === cellKey(b)) pairCandidates.push([a, b]);
+      else if (cellKey(first) === cellKey(b) && cellKey(last) === cellKey(a)) pairCandidates.push([b, a]);
+    }
+  }
+  if (!pairCandidates.length) throw new Error("Не удалось построить геометрически корректную хорду");
+  const pair = pairCandidates[Math.floor(random() * pairCandidates.length)].map((cell) => ({ ...cell }));
+  const pairKeys = new Set(pair.map(cellKey));
+
+  // Ловушки окружают оба конца хорды: неточный вход или выход часто задевает
+  // соседнюю клетку, но идеальная линия остаётся чистой.
+  const hazardPool = [];
+  for (const target of pair) {
+    for (let subId = 0; subId < subCellCount(faces[target.face]); subId++) {
+      if (subId !== target.sub) hazardPool.push({ face: target.face, sub: subId });
+    }
+    const targetCenter = worldCenters.get(cellKey(target));
+    for (const neighbor of adjacency[target.face]) {
+      const neighborCells = cells.filter((cell) => cell.face === neighbor.to);
+      neighborCells.sort((a, b) =>
+        len(sub(worldCenters.get(cellKey(a)), targetCenter)) - len(sub(worldCenters.get(cellKey(b)), targetCenter))
+      );
+      hazardPool.push({ ...neighborCells[0] });
+    }
+  }
+  const uniqueHazards = [];
+  const seenHazards = new Set(pairKeys);
+  for (const cell of shuffled(hazardPool, random)) {
+    const key = cellKey(cell);
+    if (seenHazards.has(key)) continue;
+    seenHazards.add(key);
+    uniqueHazards.push(cell);
+  }
+  const hazards = uniqueHazards.slice(0, 5);
+  if (hazards.length < 5) throw new Error("Не удалось разместить пять ловушек");
+  const forbidden = new Set([...pairKeys, ...hazards.map(cellKey)]);
+
+  // Одиночная цель проверяется отдельным радиальным проколом. Этот маршрут не
+  // должен пересекать ни пару, ни ловушки — простой вариант всегда честный.
+  const soloCandidates = shuffled(cells.filter((cell) => !forbidden.has(cellKey(cell))), random).filter((cell) => {
+    const p = worldCenters.get(cellKey(cell));
+    const outward = norm(sub(p, ballCenter));
+    const hits = classifyHits(add(p, scale(outward, ballRadius * 0.45)), scale(outward, -1));
+    return hits.length >= 2 && cellKey(hits[0]) === cellKey(cell) && hits.every((hit) => !forbidden.has(cellKey(hit)));
+  });
+  if (!soloCandidates.length) throw new Error("Не удалось построить безопасную одиночную цель");
+
+  return {
+    pair,
+    solo: { ...soloCandidates[0] },
+    hazards,
+    symbolSeed: (seed ^ 0x9e3779b9) >>> 0
+  };
+}
+
+function updatePairGuide() {
+  const transforms = foldTransforms(fold);
+  for (let i = 0; i < pairTargets.length; i++) {
+    const p = applyT(transforms[pairTargets[i].face], localCellCenter(pairTargets[i]));
+    pairGuidePoints[i].set(p[0], p[1] + 0.045 * (1 - fold), p[2]);
+    pairGuidePoints[i].sub(pairGuideCenter).applyQuaternion(pivot.quaternion).add(pairGuideCenter);
+  }
+  const direction = pairGuideDirection.subVectors(pairGuidePoints[1], pairGuidePoints[0]);
+  const length = direction.length();
+  const midpoint = pairGuidePoints[0].clone().add(pairGuidePoints[1]).multiplyScalar(0.5);
+  for (const mesh of [pairGuide, pairGuideGlow]) {
+    mesh.position.copy(midpoint);
+    mesh.scale.set(1, length, 1);
+    mesh.quaternion.setFromUnitVectors(pairGuideUp, direction.clone().normalize());
+  }
+
+  const alignment = Math.abs(direction.normalize().dot(pairGuideView.subVectors(camera.position, pairGuideCenter).normalize()));
+  // Широкая, намеренно неточная шкала: она сообщает направление поиска,
+  // но не выдаёт момент идеального совпадения.
+  if (phase === "ball") {
+    const targetHeat = THREE.MathUtils.clamp((alignment - 0.58) / 0.39, 0, 1);
+    heatLevel += (targetHeat * targetHeat - heatLevel) * 0.12;
+    if (heatLevel < 0.58) {
+      temperatureColor.lerpColors(temperatureColdColor, temperatureWarmColor, heatLevel / 0.58);
+    } else {
+      temperatureColor.lerpColors(temperatureWarmColor, temperatureHotColor, (heatLevel - 0.58) / 0.42);
+    }
+    const color = `#${temperatureColor.getHexString()}`;
+    const label = heatLevel < 0.22 ? "Льдищще" : heatLevel < 0.5 ? "Холодно" : heatLevel < 0.78 ? "Теплее" : "Горячо";
+    view.style.setProperty("--temperature-color", color);
+    view.style.setProperty("--temperature-opacity", String(0.42 + heatLevel * 0.32));
+    temperatureValue.textContent = label;
+    view.classList.add("temperature-active");
+    fill.color.copy(neutralLightColor);
+    fill.intensity = 0.65;
+  } else {
+    heatLevel += (0 - heatLevel) * 0.15;
+    fill.color.copy(neutralLightColor);
+    fill.intensity = 0.65;
+    view.classList.remove("temperature-active");
+  }
+
+  const guideFade = 1 - THREE.MathUtils.smoothstep(fold, 0.08, 0.62);
+  pairGuideMaterial.color.setHex(0xffcf55);
+  pairGuideMaterial.opacity = 0.9 * guideFade;
+  pairGuideGlowMaterial.color.setHex(0x241708);
+  pairGuideGlowMaterial.opacity = 0.58 * guideFade;
+}
+
+function applyFold(f) {
+  const T = foldTransforms(f);
+  for (let i = 0; i < groups.length; i++) {
+    const { R, t } = T[i];
+    groups[i].matrix.set(
+      R[0], R[1], R[2], t[0],
+      R[3], R[4], R[5], t[1],
+      R[6], R[7], R[8], t[2],
+      0, 0, 0, 1
+    );
+    groups[i].matrixWorldNeedsUpdate = true;
+  }
+  shadow.material.opacity = 0.28 * f;
+  pairGuide.visible = f < 0.64;
+  pairGuideGlow.visible = f < 0.64;
+  updatePairGuide();
+}
+
+/* ---------- дырки и игла ---------- */
+
+const holeRing = new THREE.MeshBasicMaterial({ color: 0xc65f50, side: THREE.DoubleSide });
+const holeCore = new THREE.MeshBasicMaterial({ color: 0x111318, side: THREE.DoubleSide });
+const holeRingGeo = new THREE.RingGeometry(0.07, 0.12, 32);
+const holeCoreGeo = new THREE.CircleGeometry(0.07, 32);
+let holeMarkers = [];
+let needle = null;
+
+function addHole(faceId, worldPoint) {
+  const group = groups[faceId];
+  const local = group.worldToLocal(worldPoint.clone());
+  const n = new THREE.Vector3(...faces[faceId].normal);
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+  for (const side of [1, -1]) {
+    const m = new THREE.Group();
+    m.add(new THREE.Mesh(holeRingGeo, holeRing), new THREE.Mesh(holeCoreGeo, holeCore));
+    m.position.copy(local).addScaledVector(n, 0.006 * side);
+    m.quaternion.copy(q);
+    group.add(m);
+    holeMarkers.push(m);
+  }
+}
+
+function clearHoles() {
+  for (const m of holeMarkers) m.parent.remove(m);
+  holeMarkers = [];
+}
+
+function showNeedle(from, to) {
+  const dir = to.clone().sub(from);
+  const length = dir.length();
+  const geo = new THREE.CylinderGeometry(0.018, 0.018, length, 10);
+  needle = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd6d3cd, metalness: 0.82, roughness: 0.18 }));
+  needle.position.copy(from).add(to).multiplyScalar(0.5);
+  needle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  scene.add(needle);
+}
+
+function hideNeedle() {
+  if (!needle) return;
+  scene.remove(needle);
+  needle.geometry.dispose();
+  needle = null;
+}
+
+/* ---------- камера ---------- */
+
+const flatTarget = new THREE.Vector3(0, 0, 0);
+const ballTarget = new THREE.Vector3(...ballCenter);
+
+function flatCamera() {
+  const half = THREE.MathUtils.degToRad(camera.fov / 2);
+  const screenW = portrait ? netSize.d : netSize.w;
+  const screenH = portrait ? netSize.w : netSize.d;
+  const dist = Math.max(screenH / 2 / Math.tan(half), screenW / 2 / (Math.tan(half) * camera.aspect)) * 1.12 + 0.4;
+  const tilt = 0.22;
+  const dir = portrait
+    ? new THREE.Vector3(Math.sin(tilt), Math.cos(tilt), 0)
+    : new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt));
+  return { pos: dir.multiplyScalar(dist).add(flatTarget), target: flatTarget };
+}
+
+function ballCamera() {
+  const vHalf = THREE.MathUtils.degToRad(camera.fov / 2);
+  const half = Math.min(vHalf, Math.atan(Math.tan(vHalf) * camera.aspect));
+  // Небольшой запас сверху отделяет шар от индикатора температуры.
+  const dist = (ballRadius / Math.sin(half)) * 1.42;
+  const dir = portrait ? new THREE.Vector3(1, 0.6, 0) : new THREE.Vector3(0, 0.6, 1);
+  return { pos: dir.normalize().multiplyScalar(dist).add(ballTarget), target: ballTarget };
+}
+
+const camTarget = new THREE.Vector3();
+function placeCamera(f) {
+  const a = flatCamera();
+  const b = ballCamera();
+  const e = ease(f);
+  camera.position.lerpVectors(a.pos, b.pos, e);
+  camTarget.lerpVectors(a.target, b.target, e);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(camTarget);
+}
+
+function ease(u) {
+  return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+}
+
+/* ---------- анимация ---------- */
+
+const IDENTITY_Q = new THREE.Quaternion();
+
+function animateTo(to, ms, done) {
+  anim = { from: fold, to, t0: performance.now(), ms, done, q0: pivot.quaternion.clone() };
+}
+
+function frame(now) {
+  if (anim) {
+    const u = Math.min(1, (now - anim.t0) / anim.ms);
+    const e = u * u * (3 - 2 * u);
+    fold = anim.from + (anim.to - anim.from) * e;
+    if (anim.to < anim.from) pivot.quaternion.slerpQuaternions(anim.q0, IDENTITY_Q, e);
+    applyFold(fold);
+    if (u >= 1) {
+      const done = anim.done;
+      anim = null;
+      if (done) done();
+    }
+  }
+  if (!anim && phase === "ball" && drag.id == null && (Math.abs(spinX) > 0.01 || Math.abs(spinY) > 0.01)) {
+    rotateBall(spinX, spinY);
+    spinX *= 0.92;
+    spinY *= 0.92;
+  }
+  placeCamera(fold);
+  updatePairGuide();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- игра ---------- */
+
+function setUi() {
+  btnFold.hidden = phase !== "flat";
+  btnFold.disabled = phase !== "flat";
+  btnPierce.hidden = !(phase === "ball" || phase === "needle");
+  btnPierce.disabled = phase !== "ball";
+  btnPierce.setAttribute("aria-pressed", aiming ? "true" : "false");
+  btnPierce.textContent = aiming ? "Выбрать точку" : "Проколоть";
+  btnAgain.hidden = phase !== "result";
+  if (phase === "result") {
+    if (runOver) btnAgain.textContent = "Новый забег";
+    else btnAgain.textContent = "Следующая попытка";
+  }
+  view.classList.toggle("aim", aiming);
+  view.classList.toggle("rotatable", phase === "ball" && !aiming);
+  runStatus.innerHTML =
+    "<span>Попытки " + attemptsLeft + "/" + MAX_ATTEMPTS + "</span>" +
+    "<span>Счёт " + score + "</span>" +
+    "<span>Рекорд " + Math.max(bestScore, score) + "</span>";
+}
+
+function resetToFlatBoard() {
+  anim = null;
+  hideNeedle();
+  clearHoles();
+  pivot.quaternion.identity();
+  fold = 0;
+  applyFold(0);
+  phase = "flat";
+  aiming = false;
+  out.hidden = true;
+  proof.hidden = true;
+  piercedCells = [];
+}
+
+function newChallenge() {
+  loadChallenge(generateProceduralChallenge());
+  resetToFlatBoard();
+  hint.textContent = "Одиночная цель — 10. Соедините двойную золотую пару — 25. Избегайте красных ловушек.";
+  setUi();
+}
+
+function startRun() {
+  attemptsLeft = MAX_ATTEMPTS;
+  score = 0;
+  runOver = false;
+  newChallenge();
+}
+
+function panelLabel(id) {
+  return id + 1;
+}
+
+function cellLabel(face, sub) {
+  return panelLabel(face) + "-" + (sub + 1);
+}
+
+function formatCellList(cells) {
+  return cells.map((c) => cellLabel(c.face, c.sub)).join(", ");
+}
+
+const _localPt = new THREE.Vector3();
+
+function tangentAtWorldHit(faceId, worldPoint) {
+  const group = groups[faceId];
+  _localPt.copy(worldPoint);
+  group.worldToLocal(_localPt);
+  return tangentCoords(faces[faceId], [_localPt.x, _localPt.y, _localPt.z]);
+}
+
+function subCellAtWorldHit(faceId, worldPoint) {
+  const [u, v] = tangentAtWorldHit(faceId, worldPoint);
+  return subCellAtPoint(faces[faceId], u, v);
+}
+
+function evaluatePierce(cells) {
+  const pairHits = pairTargets.filter((target) =>
+    cells.some((cell) => sameCell(target, cell.face, cell.sub))
+  );
+  const soloHit = cells.some((cell) => sameCell(soloTarget, cell.face, cell.sub));
+  const hazardHits = hazardCells.filter((hazard) =>
+    cells.some((cell) => sameCell(hazard, cell.face, cell.sub))
+  );
+  const doubleHit = pairHits.length === 2;
+  const hit = hazardHits.length === 0 && (doubleHit || soloHit);
+  return { hit, doubleHit, soloHit, pairHits, hazardHits };
+}
+
+const _wv = new THREE.Vector3();
+
+function worldVertsForFaces() {
+  const all = [];
+  for (let i = 0; i < faces.length; i++) {
+    const wv = [];
+    for (const p of faces[i].verts) {
+      _wv.set(p[0], p[1], p[2]).applyMatrix4(groups[i].matrixWorld);
+      wv.push([_wv.x, _wv.y, _wv.z]);
+    }
+    all.push(wv);
+  }
+  return all;
+}
+
+function startFold() {
+  if (phase !== "flat") return;
+  phase = "folding";
+  hint.textContent = "Складываем развёртку…";
+  setUi();
+  animateTo(1, FOLD_MS, () => {
+    phase = "ball";
+    hint.textContent = "Ореол показывает близость направления: синий — далеко, оранжевый — близко. Он не указывает место на поверхности.";
+    setUi();
+  });
+}
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function pierceAt(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+  scene.updateMatrixWorld(true);
+  raycaster.setFromCamera(ndc, camera);
+  const ro = raycaster.ray.origin;
+  const rd = raycaster.ray.direction;
+  const through = pierceAlongRay([ro.x, ro.y, ro.z], [rd.x, rd.y, rd.z], worldVertsForFaces());
+  if (through.length < 2) {
+    hint.textContent = "Точка вне шара. Выберите место на поверхности.";
+    return;
+  }
+
+  piercedCells = [];
+  const seenCell = new Set();
+  for (const h of through) {
+    const wp = new THREE.Vector3(h.point[0], h.point[1], h.point[2]);
+    const uv = tangentAtWorldHit(h.id, wp);
+    const sub = subCellAtPoint(faces[h.id], uv[0], uv[1]);
+    const key = h.id + ":" + sub;
+    if (seenCell.has(key)) continue;
+    seenCell.add(key);
+    piercedCells.push({ face: h.id, sub, uv });
+    addHole(h.id, wp);
+  }
+  aiming = false;
+  phase = "needle";
+  setUi();
+  const dir = rd.clone().normalize();
+  const p0 = new THREE.Vector3(through[0].point[0], through[0].point[1], through[0].point[2]);
+  const p1 = new THREE.Vector3(through[through.length - 1].point[0], through[through.length - 1].point[1], through[through.length - 1].point[2]);
+  showNeedle(
+    p0.clone().addScaledVector(dir, -ballRadius * 0.35),
+    p1.clone().addScaledVector(dir, ballRadius * 0.35)
+  );
+  hint.textContent = "Прокол: " + formatCellList(piercedCells) + ". Разворачиваем…";
+
+  const result = evaluatePierce(piercedCells);
+  setTimeout(() => {
+    hideNeedle();
+    phase = "unfolding";
+    animateTo(0, UNFOLD_MS, () => showResult(result));
+  }, NEEDLE_MS);
+}
+
+function showResult(result) {
+  phase = "result";
+  let gained = 0;
+  if (result.hit) {
+    gained = result.doubleHit ? 25 : 10;
+    score += gained;
+  }
+  attemptsLeft--;
+  if (attemptsLeft <= 0) runOver = true;
+  proof.hidden = false;
+  out.hidden = false;
+  out.classList.toggle("good", result.hit);
+  out.classList.toggle("bad", !result.hit);
+  proof.innerHTML =
+    '<span class="hole-list">Дырки: ячейки ' + formatCellList(piercedCells) + ".</span> " +
+    '<span class="tank-mark">Пара: ' + formatCellList(pairTargets) + ". Одиночная: " + cellLabel(soloTarget.face, soloTarget.sub) + ". Ловушки: " + formatCellList(hazardCells) + ".</span>";
+  if (result.hit && result.doubleHit) {
+    out.textContent = "Двойная хорда · +25 очков";
+  } else if (result.hit) {
+    out.textContent = "Одиночная цель · +10 очков";
+  } else if (result.hazardHits.length) {
+    out.textContent = "Ловушка задета · попытка потеряна";
+  } else if (result.pairHits.length === 1) {
+    out.textContent = "Задета только половина пары · попытка потеряна";
+  } else {
+    out.textContent = "Мимо целей · попытка потеряна";
+  }
+  if (runOver) {
+    const isRecord = score > bestScore;
+    if (isRecord) {
+      bestScore = score;
+      storeBestScore(bestScore);
+    }
+    hint.textContent = (isRecord ? "Новый рекорд" : "Забег завершён") + " · " + score + " очков";
+  }
+  else hint.textContent = "Результат прокола";
+  setUi();
+}
+
+/* ---------- ввод: тяни — крутишь мяч, тап в режиме «Колоть» — прокол ---------- */
+
+const drag = { id: null, x: 0, y: 0, sx: 0, sy: 0, moved: false, t: 0, lastMove: 0, vx: 0, vy: 0 };
+let spinX = 0;
+let spinY = 0;
+const camRight = new THREE.Vector3();
+const camUp = new THREE.Vector3();
+const qa = new THREE.Quaternion();
+const qb = new THREE.Quaternion();
+
+function rotateBall(dx, dy) {
+  camera.updateMatrixWorld();
+  camRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  camUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+  const k = 0.009;
+  qa.setFromAxisAngle(camUp, dx * k);
+  qb.setFromAxisAngle(camRight, dy * k);
+  pivot.quaternion.premultiply(qa.multiply(qb)).normalize();
+}
+
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (phase !== "ball") return;
+  drag.id = e.pointerId;
+  drag.x = drag.sx = e.clientX;
+  drag.y = drag.sy = e.clientY;
+  drag.moved = false;
+  drag.t = drag.lastMove = performance.now();
+  drag.vx = drag.vy = 0;
+  spinX = spinY = 0;
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+
+renderer.domElement.addEventListener("pointermove", (e) => {
+  if (drag.id !== e.pointerId || phase !== "ball") return;
+  if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
+  if (drag.moved) {
+    const now = performance.now();
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    const frameScale = 16.67 / Math.max(4, now - drag.t);
+    drag.vx = drag.vx * 0.55 + dx * frameScale * 0.45;
+    drag.vy = drag.vy * 0.55 + dy * frameScale * 0.45;
+    drag.t = drag.lastMove = now;
+    rotateBall(dx, dy);
+  }
+  drag.x = e.clientX;
+  drag.y = e.clientY;
+});
+
+function endDrag(e) {
+  if (drag.id !== e.pointerId) return;
+  const tap = !drag.moved;
+  const releaseSpeed = Math.hypot(drag.vx, drag.vy);
+  const deliberateMove = performance.now() - drag.lastMove > 75 || releaseSpeed < 3.2;
+  if (deliberateMove) {
+    spinX = spinY = 0;
+  } else {
+    const clamp = Math.min(1, 18 / releaseSpeed);
+    spinX = drag.vx * clamp;
+    spinY = drag.vy * clamp;
+  }
+  drag.id = null;
+  if (tap && aiming && phase === "ball") pierceAt(e.clientX, e.clientY);
+}
+renderer.domElement.addEventListener("pointerup", endDrag);
+renderer.domElement.addEventListener("pointercancel", (e) => {
+  if (drag.id === e.pointerId) {
+    drag.id = null;
+    spinX = spinY = 0;
+  }
+});
+
+btnFold.addEventListener("click", startFold);
+btnPierce.addEventListener("click", () => {
+  if (phase !== "ball") return;
+  aiming = !aiming;
+  setUi();
+});
+btnAgain.addEventListener("click", () => {
+  if (runOver) {
+    startRun();
+  } else {
+    newChallenge();
+  }
+});
+
+function resize() {
+  const w = Math.max(1, view.clientWidth);
+  const h = Math.max(1, view.clientHeight);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  portrait = h > w * 1.05;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+resize();
+
+startRun();
+window.__sharReady = true;
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
